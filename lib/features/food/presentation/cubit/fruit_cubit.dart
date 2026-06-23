@@ -77,114 +77,279 @@ class FruitCubit extends Cubit<FruitState> {
     try {
       await _updateF(fruit);
       final updatedFruits = await _getF();
-
       emit(FruitSuccess(updatedFruits));
-      await load();
     } catch (e) {
       emit(FruitFailure());
     }
   }
 
   void showAddDialog(BuildContext context) {
+    final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
     final priceController = TextEditingController();
     final countryController = TextEditingController();
+    final fruitCubit = this;
 
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: "Tên trái cây"),
-            ),
-            TextField(
-              controller: priceController,
-              decoration: const InputDecoration(labelText: "Giá tiền"),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: countryController,
-              decoration: const InputDecoration(labelText: "Quốc gia"),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-            },
-            child: const Text("Hủy"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final newFruit = Fruit(
-                id: '',
-                name: nameController.text,
-                price: double.tryParse(priceController.text) ?? 0,
-                country: countryController.text,
+      builder: (dialogContext) {
+        return BlocProvider.value(
+          value: fruitCubit,
+          child: BlocBuilder<FruitCubit, FruitState>(
+            builder: (context, state) {
+              final isLoading = state is FruitLoading;
+
+              return AlertDialog(
+                title: const Text("Thêm Trái Cây Mới"),
+                content: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: nameController,
+                        enabled: !isLoading,
+                        decoration: const InputDecoration(
+                          labelText: "Tên trái cây *",
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return "Tên không được để trống";
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: priceController,
+                        enabled: !isLoading,
+                        decoration: const InputDecoration(
+                          labelText: "Giá tiền *",
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return "Giá không được để trống";
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: countryController,
+                        enabled: !isLoading,
+                        decoration: const InputDecoration(
+                          labelText: "Quốc gia *",
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return "Quốc gia không được để trống";
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  // --- NÚT HỦY ---
+                  Builder(
+                    builder: (context) {
+                      if (isLoading) {
+                        // Nếu đang loading thì trả về nút bị khóa (onPressed: null)
+                        return TextButton(
+                          onPressed: null,
+                          child: const Text("Hủy"),
+                        );
+                      } else {
+                        // Nếu không loading thì cho phép bấm để tắt dialog
+                        return TextButton(
+                          onPressed: () {
+                            Navigator.pop(dialogContext);
+                          },
+                          child: const Text("Hủy"),
+                        );
+                      }
+                    },
+                  ),
+
+                  Builder(
+                    builder: (context) {
+                      if (isLoading) {
+                        return ElevatedButton(
+                          onPressed: null,
+                          child: const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        );
+                      } else {
+                        return ElevatedButton(
+                          onPressed: () {
+                            if (formKey.currentState!.validate()) {
+                              FocusScope.of(context).unfocus();
+
+                              final newFruit = Fruit(
+                                id: '',
+                                name: nameController.text.trim(),
+                                price:
+                                    double.tryParse(
+                                      priceController.text.trim(),
+                                    ) ??
+                                    0,
+                                country: countryController.text.trim(),
+                              );
+
+                              fruitCubit.create(newFruit);
+                              Navigator.pop(dialogContext);
+                            }
+                          },
+                          child: const Text("Thêm"),
+                        );
+                      }
+                    },
+                  ),
+                ],
               );
-              context.read<FruitCubit>().create(newFruit);
-              Navigator.pop(dialogContext);
             },
-            child: Text("Thêm"),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   void showEditDialog(BuildContext context, Fruit fruit) {
+    final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: fruit.name);
     final priceController = TextEditingController(text: fruit.price.toString());
     final countryController = TextEditingController(text: fruit.country);
+
+    final fruitCubit = this;
+
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: "Tên trái cây"),
-            ),
-            TextField(
-              controller: priceController,
-              decoration: const InputDecoration(labelText: "Giá tiền"),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: countryController,
-              decoration: const InputDecoration(labelText: "Quốc gia"),
-              keyboardType: TextInputType.number,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text("Hủy"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final updatedFruit = Fruit(
-                id: fruit.id,
-                name: nameController.text,
-                price: double.tryParse(priceController.text) ?? 0,
-                country: countryController.text,
+      builder: (dialogContext) {
+        return BlocProvider.value(
+          value: fruitCubit,
+          child: BlocBuilder<FruitCubit, FruitState>(
+            builder: (context, state) {
+              final isLoading = state is FruitLoading;
+
+              return AlertDialog(
+                title: const Text("Cập Nhật Trái Cây"),
+                content: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextFormField(
+                        controller: nameController,
+                        enabled: !isLoading,
+                        decoration: const InputDecoration(
+                          labelText: "Tên trái cây *",
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return "Tên không được để trống";
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: priceController,
+                        enabled: !isLoading,
+                        decoration: const InputDecoration(
+                          labelText: "Giá tiền *",
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return "Giá không được để trống";
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: countryController,
+                        enabled: !isLoading,
+                        decoration: const InputDecoration(
+                          labelText: "Quốc gia *",
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return "Quốc gia không được để trống";
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  Builder(
+                    builder: (context) {
+                      if (isLoading) {
+                        return TextButton(
+                          onPressed: null,
+                          child: const Text("Hủy"),
+                        );
+                      } else {
+                        return TextButton(
+                          onPressed: () {
+                            Navigator.pop(dialogContext);
+                          },
+                          child: const Text("Hủy"),
+                        );
+                      }
+                    },
+                  ),
+
+                  Builder(
+                    builder: (context) {
+                      if (isLoading) {
+                        return ElevatedButton(
+                          onPressed: null,
+                          child: const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        );
+                      } else {
+                        return ElevatedButton(
+                          onPressed: () {
+                            if (formKey.currentState!.validate()) {
+                              FocusScope.of(context).unfocus();
+
+                              final updatedFruit = Fruit(
+                                id: fruit.id,
+                                name: nameController.text.trim(),
+                                price:
+                                    double.tryParse(
+                                      priceController.text.trim(),
+                                    ) ??
+                                    0,
+                                country: countryController.text.trim(),
+                              );
+
+                              fruitCubit.updateFruit(updatedFruit);
+                              Navigator.pop(dialogContext);
+                            }
+                          },
+                          child: const Text("Cập nhật"),
+                        );
+                      }
+                    },
+                  ),
+                ],
               );
-
-              context.read<FruitCubit>().updateFruit(updatedFruit);
-
-              Navigator.pop(dialogContext);
             },
-            child: const Text("Cập nhật"),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
