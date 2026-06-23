@@ -152,17 +152,14 @@ class FruitCubit extends Cubit<FruitState> {
                   ),
                 ),
                 actions: [
-                  // --- NÚT HỦY ---
                   Builder(
                     builder: (context) {
                       if (isLoading) {
-                        // Nếu đang loading thì trả về nút bị khóa (onPressed: null)
                         return TextButton(
                           onPressed: null,
                           child: const Text("Hủy"),
                         );
                       } else {
-                        // Nếu không loading thì cho phép bấm để tắt dialog
                         return TextButton(
                           onPressed: () {
                             Navigator.pop(dialogContext);
